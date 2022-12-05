@@ -1,0 +1,123 @@
+#           importation des outils
+import os, sys
+
+#           ouvrir le fichier .sam et lire les listes
+
+
+f = open(sys.argv[1],'r')
+
+lines = f.readlines()
+readtotal = 0
+paireend = 0
+cpt_paireend_30=0
+cpt_single_30=0
+cpt_match = 0
+GRsam="Good_Read_Of_Your_Sam.sam"
+cigar="outpuTable_cigar.txt"
+final_cigar="Final_Cigar_table.txt"
+txted=open(final_cigar,'w')
+
+for line in lines:	
+        #check if the lines is a header
+	if line[0].startswith('@'):
+            #print the header
+		header=line
+		#headerlist.append(header)
+		with open(GRsam, 'a') as f:
+			f.write(header)
+			#f.write("\r")
+		#print(line)
+	else:
+		line=line.split()
+		if len(line) < 15 and len(line)>10:
+			print("this is not a .sam file")
+			print("please give me a unique .sam file as parameter")
+			sys.exit(1)
+		else:	
+			dico = {'ID':line[0], 'FLAG':line[1], 'RNAME':line[2], 'POS':line[3], 'MAPQ':line[4], 'CIGAR':line[5], 'RNEXT':line[6], 'PNEXT':line[7], 'TLEN':line[8], 'SEQ':line[9], 'QUAL':line[10]}
+			readtotal += 1
+            	#convert the dico['FLAG'] into binary with 12 digits
+			#binary = bin(int(dico['FLAG'])).lstrip('-0b').zfill(12)
+            	#split the binary into a list
+			#binary = list(binary)
+            	#reverse the list
+			#binary = binary[::-1]
+			#define tuple list with the meaning of each digit
+			#isolate the results where binary is exclusively equals to : 110010100000, 110001010000,110010010000 and 110001100000
+			binary = bin(int(dico['FLAG'])).lstrip('-0b').zfill(12)
+			binary = '0b' + binary
+			if ((binary == '0b000001010011') or (binary == '0b000010100011') or (binary == '0b000001001011') or (binary == '0b000010010011')and (int(dico['MAPQ'])>=30)):
+				cpt_paireend_30 +=1
+				with open(cigar, 'a') as f:
+					f.write(dico['CIGAR'])
+					f.write("\n")
+            	#crate a sam file in the working diractory
+				with open(GRsam, 'a') as f:
+                        		f.write("\t".join(dico.values()))
+                        		f.write("\n")
+"""elif binary[2]=='0' and binary[3]=='1' and (int(dico['MAPQ'])>=30) :
+				cpt_single_30 +=1
+				with open(GRsam, 'a') as f:
+					f.write("\t".join(dico.values()))
+					f.write("\n")
+				with open(cigar, 'a') as f:
+					f.write(dico['CIGAR'])
+					f.write("\n")
+			else:
+            	pass"""
+			#launch the function cigar_table
+cigar_table()
+
+#open the cigar file and read the lines
+
+
+def cigar_table():
+    f = open(cigar,'r')
+    lines = f.readlines()
+    for line in lines:
+        #define a dictionary with the cigar and the number of occurence
+        dico = {'M':0, 'I':0, 'D':0, 'N':0, 'S':0, 'H':0, 'P':0, '=':0, 'X':0}
+        #isolate the number in a list
+        number = [int(s) for s in line.split() if s.isdigit()]
+        #affect the number to the key in the dico
+        for i in number:
+            #if there is no number in the corresponding key, the number is 0
+            if i == 0:
+                dico['M'] = 0
+                dico['I'] = 0
+                dico['D'] = 0
+                dico['N'] = 0
+                dico['S'] = 0
+                dico['H'] = 0
+                dico['P'] = 0
+                dico['='] = 0
+                dico['X'] = 0
+            #if there is a number in the corresponding key, the number is the number in the list
+            else:
+                dico['M'] = i
+                dico['I'] = i
+                dico['D'] = i
+                dico['N'] = i
+                dico['S'] = i
+                dico['H'] = i
+                dico['P'] = i
+                dico['='] = i
+                dico['X'] = i
+                #save the value of the current line in a txt file
+                with open(final_cigar, 'a') as f:
+                    f.write("\t".join(dico.values()))
+                    f.write("\n")
+					
+
+#txted.write("Global cigar mutation observed :"+"\n"+"Alignlent Match : "+round(M/nbReads,2)+"\n"+"Insertion : "+round(I/nbReads,2)+"\n"+"Deletion : "+round(D/nbReads,2)+"\n"+"Skipped region : "+round(S/nbReads,2)+"\n"+"Soft Clipping : "+round(H/nbReads,2)+"\n"+"Hard Clipping : "+round(N/nbReads,2)+"\n"+"Padding : "+round(P/nbReads,2)+"\n"+"Sequence Match : "+round(Egal/nbReads,2)+"\n"+"Sequence Mismatch : "+round(X/nbReads,2)+"\n")
+
+
+
+
+# Compteur :
+
+print("le nombre de read total dans ce fichier est de : ", readtotal)
+
+print("le nombre de paire end bien mappé et bien orienté est de : ", cpt_paireend_30)
+
+print("le nombre de single read bien mappé est de : ",cpt_single_30)
