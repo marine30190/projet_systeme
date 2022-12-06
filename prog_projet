@@ -1,5 +1,22 @@
 #!/usr/bin/python3
 #-*- coding : utf-8 -*-
+
+"""__authors__ = ("Romain VICENS", "Marine DALLO", "Viktor ILIEV")
+__contact__ = ("romain.vicens@etu.umontpellier.fr","marine.dallo@etu.umontpellier.fr","viktor.iliev@etu.umontpellier.fr")
+__version__ = "0.0.1"
+__date__ = "05/12/2022"
+__licence__ ="This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+        GNU General Public License for more details.
+        You should have received a copy of the GNU General Public License
+        along with this program. If not, see <https://www.gnu.org/licenses/>."""
+
+#import of module :
 import os, sys, re, time
 
 ### Clearing the screen ###
