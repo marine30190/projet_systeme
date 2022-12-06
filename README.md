@@ -3,12 +3,17 @@
 ## Introduction :
 
 This software is used to analyze .sam files. Here, this tool will be used to sort the reads of the .sam file according to their flag and their qualities but also to say if the read is mapped in totality or if it has insertions, deletions.
-For this program the language used is Python3.
+For this program the language used is Python3.10.6. 
 
 ## launch of the run :
 
 To launch this tool you have to enter a terminal, launch the python3 environment and then launch the program and the file to be analyzed.
 Example of the command: python3 project_system.py file_name.sam
+
+## DEPENDENSe :
+Import, tester sur la version 10.6
+
+## FICHIER Généré :
 
 ## LICENSE :
 
