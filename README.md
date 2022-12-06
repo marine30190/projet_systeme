@@ -10,10 +10,13 @@ For this program the language used is Python3.10.6.
 To launch this tool you have to enter a terminal, launch the python3 environment and then launch the program and the file to be analyzed.
 Example of the command: python3 project_system.py file_name.sam
 
-## DEPENDENSe :
-Import, tester sur la version 10.6
+## DEPENDENSE :
+
+Import of os, sys, re and time modules tested on version 10.6.
 
 ## FICHIER Généré :
+
+With this program we start from a sam file. (https://www.samformat.info/) The output files are a .sam file that contains all the reads sorted by flag (well-mapped and well-oriented read singles and end pairs that are also well-mapped and well-oriented) and read quality with MAPQ. The second file is of type txt which summarizes all the counters as well as the summary of the CIGAR which informs on the percentage of totally mapped read as well as the percentage of indels.
 
 ## LICENSE :
 
