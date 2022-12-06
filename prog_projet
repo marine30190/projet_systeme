@@ -1,123 +1,389 @@
-#           importation des outils
-import os, sys
+#!/usr/bin/python3
+#-*- coding : utf-8 -*-
+import os, sys, re, time
 
-#           ouvrir le fichier .sam et lire les listes
+### Clearing the screen ###
+def cls():
+    os.system('cls' if os.name=='nt' else 'clear')
 
+### Saving the header as global variable since it will be used in all functions ### 
+global header
 
-f = open(sys.argv[1],'r')
+### Defining a class for the columns ###
+class Line:
+    def __init__(self, originalLine, ID, FLAG, RNAME, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL):
+        self.originalLine = originalLine
+        self.ID = ID
+        self.FLAG = FLAG
+        self.RNAME = RNAME
+        self.POS = POS
+        self.MAPQ = MAPQ
+        self.CIGAR = CIGAR
+        self.RNEXT = RNEXT
+        self.PNEXT = PNEXT
+        self.TLEN = TLEN
+        self.SEQ = SEQ
+        self.QUAL = QUAL
+        
 
-lines = f.readlines()
-readtotal = 0
-paireend = 0
-cpt_paireend_30=0
-cpt_single_30=0
-cpt_match = 0
-GRsam="Good_Read_Of_Your_Sam.sam"
-cigar="outpuTable_cigar.txt"
-final_cigar="Final_Cigar_table.txt"
-txted=open(final_cigar,'w')
+    def str(self):
+        return self.originalLine
 
-for line in lines:	
-        #check if the lines is a header
-	if line[0].startswith('@'):
-            #print the header
-		header=line
-		#headerlist.append(header)
-		with open(GRsam, 'a') as f:
-			f.write(header)
-			#f.write("\r")
-		#print(line)
-	else:
-		line=line.split()
-		if len(line) < 15 and len(line)>10:
-			print("this is not a .sam file")
-			print("please give me a unique .sam file as parameter")
-			sys.exit(1)
-		else:	
-			dico = {'ID':line[0], 'FLAG':line[1], 'RNAME':line[2], 'POS':line[3], 'MAPQ':line[4], 'CIGAR':line[5], 'RNEXT':line[6], 'PNEXT':line[7], 'TLEN':line[8], 'SEQ':line[9], 'QUAL':line[10]}
-			readtotal += 1
-            	#convert the dico['FLAG'] into binary with 12 digits
-			#binary = bin(int(dico['FLAG'])).lstrip('-0b').zfill(12)
-            	#split the binary into a list
-			#binary = list(binary)
-            	#reverse the list
-			#binary = binary[::-1]
-			#define tuple list with the meaning of each digit
-			#isolate the results where binary is exclusively equals to : 110010100000, 110001010000,110010010000 and 110001100000
-			binary = bin(int(dico['FLAG'])).lstrip('-0b').zfill(12)
-			binary = '0b' + binary
-			if ((binary == '0b000001010011') or (binary == '0b000010100011') or (binary == '0b000001001011') or (binary == '0b000010010011')and (int(dico['MAPQ'])>=30)):
-				cpt_paireend_30 +=1
-				with open(cigar, 'a') as f:
-					f.write(dico['CIGAR'])
-					f.write("\n")
-            	#crate a sam file in the working diractory
-				with open(GRsam, 'a') as f:
-                        		f.write("\t".join(dico.values()))
-                        		f.write("\n")
-"""elif binary[2]=='0' and binary[3]=='1' and (int(dico['MAPQ'])>=30) :
-				cpt_single_30 +=1
-				with open(GRsam, 'a') as f:
-					f.write("\t".join(dico.values()))
-					f.write("\n")
-				with open(cigar, 'a') as f:
-					f.write(dico['CIGAR'])
-					f.write("\n")
-			else:
-            	pass"""
-			#launch the function cigar_table
-cigar_table()
-
-#open the cigar file and read the lines
+### Get list of lines using the class method ###
+def GetListOfLines(lines) -> list[Line]:
+    global header
+    header = ""
+    list : list[Line] = []
+    for line in lines:
+        if line.startswith("@"):
+            header += line
+            continue
+        spls = line.split()
+        myCurrentLine = Line(line, spls[0], spls[1], spls[2], spls[3], spls[4], spls[5], spls[6], spls[7], spls[8], spls[9], spls[10])
+        list.append(myCurrentLine)
+    return list
 
 
-def cigar_table():
-    f = open(cigar,'r')
-    lines = f.readlines()
-    for line in lines:
-        #define a dictionary with the cigar and the number of occurence
-        dico = {'M':0, 'I':0, 'D':0, 'N':0, 'S':0, 'H':0, 'P':0, '=':0, 'X':0}
-        #isolate the number in a list
-        number = [int(s) for s in line.split() if s.isdigit()]
-        #affect the number to the key in the dico
-        for i in number:
-            #if there is no number in the corresponding key, the number is 0
-            if i == 0:
-                dico['M'] = 0
-                dico['I'] = 0
-                dico['D'] = 0
-                dico['N'] = 0
-                dico['S'] = 0
-                dico['H'] = 0
-                dico['P'] = 0
-                dico['='] = 0
-                dico['X'] = 0
-            #if there is a number in the corresponding key, the number is the number in the list
+### Checking if the sam file is good and creating dictionary if it is ###
+def isFileValid(sam_lines):
+    if len(sam_lines) == 0:
+        print("The file is empty")
+        print("Please give me a valid .sam file as parameter")
+        print("The script will shut down in 5 seconds")
+        for i in reversed(range(6)):
+            cls()
+            print(i)
+            time.sleep(1)
+        cls()
+        print("BOOM")
+        return False
+    for line in sam_lines:
+        if len(sam_lines) < 15 and len(sam_lines) > 10:
+            print("This is not a valid .sam file, it has more than 15 columns or less than 10 columns")
+            print("Please give me a valid .sam file as parameter")
+            print("The script will shut down in 5 seconds")
+            for i in reversed(range(6)):
+                cls()
+                print(i)
+                time.sleep(1)
+            cls()
+            print("BOOM")
+            return False #replacing sys.exit(1) because sys.exit is stopping the program
+    return True
+
+### Checking file's extention ###
+def isExtentionValid(file, extentiontype):
+    fileExtention = file.split(".")
+    if fileExtention[1] == extentiontype:
+        return True
+    else:
+        return False
+
+### Check if it's file or folder ###
+def isDirectory(file):
+    if os.path.isdir(file): #is it file -> TRUE OR FALSE if it's file - FALSE if it's dir TRUE
+        return True
+    else:
+        return False
+
+### Bombing ###
+def boom():
+    print("this is not a .sam file")
+    print("please give me a unique .sam file as parameter")
+    print("The script will shut down in 5 seconds")
+    for i in reversed(range(6)):
+        cls()
+        print(i)
+        time.sleep(1)
+        cls()
+        print("BOOM")
+
+### Convert flag into binary ### 
+def flagBinary(flag):
+    bFlag = bin(int(flag)).lstrip('-0b').zfill(12) #split the binary into a list	
+    binaryFlag = list(bFlag) 
+    revbinaryFlag = binaryFlag[::-1] #reverse the list
+    return revbinaryFlag
+
+### Total reads in the sam file ###
+def totalReads(sam_lines : list[Line]):
+    totalReads = 0
+    mapped = 0
+    mappedRightOrientaion = 0
+    mappedWrongOrientation = 0
+    unmapped = 0
+    singleUnmapped = 0
+    doubleUnmapped = 0
+    for currline in sam_lines:
+        line = currline.str()
+        if line.startswith("@"): # or (col_line[1].isnumeric() == False)
+            continue
+        col_line = line.split()
+        flag = flagBinary(col_line[1])
+        totalReads += 1
+        
+        if (int(flag[1]) == 1):     #if true = mapped
+            mapped += 1
+            intFlag = [int(i) for i in flag]
+            if (sum(intFlag) == 4):     #if true = right orientation
+                mappedRightOrientaion += 1
+            else:   #else wrong orientation
+                mappedWrongOrientation += 1
+        else:   #else unmapped
+            unmapped += 1
+            if int(flag[2]) and int(flag[3]) == 1: #if true = double
+                doubleUnmapped += 1
+            else:   #else single
+                singleUnmapped += 1
+    print("Total reads : " + str(totalReads) + "\n" + "Mapped reads : " + str(mapped) + " from which " + str(mappedRightOrientaion) + " are right orientation and " + str(mappedWrongOrientation) + " are wrong orientation" + "\n" + "Unmapped reads : " + str(unmapped) + " from which " + str(doubleUnmapped) + " are with both reads are unmapped and " + str(singleUnmapped) + " in which one of the reads is unmapped")
+
+### Analysing unmapped - unmapped in general not single or pair ###
+def unmapped(sam_line):
+    unmapped_count = 0
+    result = []
+    with open("only_unmapped.sam", "a+") as unmapped_fasta, open("summary_unmapped.txt","w") as summary_file: # "a+" is mode for open - append and "w" - write
+        unmapped_fasta.write(header)
+        for currline in sam_line:
+            line = currline.str()
+            if line.startswith("@"): # skip header
+                continue
+            col_line = line.split()
+            flag = flagBinary(col_line[1])
+
+            if int(flag[2]) == 1:       #only unmapped
+                unmapped_count += 1
+                unmapped_fasta.write(str(line))
+                result.append(currline)
+        summary_file.write("Total unmapped reads: " + str(unmapped_count) + "\n")
+    print("The files are saved as only_unmapped_both_reads.sam and summary_both_reads_unmapped.txt")
+    return result
+
+### Sub class of unmapped - where both reads in pair are unmapped ### 
+def doubleUnmapped(sam_line):
+    doubleCount = 0
+    result = []
+    with open("only_unmapped_both_reads.sam", "a+") as both_reads_unmapped_fasta, open("summary_both_reads_unmapped.txt", "w") as summary_file_of_both_reads_unmapped:
+        both_reads_unmapped_fasta.write(header)
+        for currline in sam_line:
+            line = currline.str()
+            if line.startswith("@"):
+                continue
+            col_line = line.split()
+            flag = flagBinary(col_line[1])
+
+        if (int(flag[2]) == 1 and int(flag[3]) == 1):       #unmapped and mate unmapped
+            doubleCount += 1
+            both_reads_unmapped_fasta.write(str(line))
+            result.append(currline)
+        summary_file_of_both_reads_unmapped.write("Total unmapped reads where both reads are unmapped: " + str(doubleCount)+ "\n")
+    print("The files are saved as only_unmapped_both_reads.sam and summary_both_reads_unmapped.txt")
+    return result
+
+### Sub class of unmapped - where one of the reads in pair is unmapped ### 
+def singleUnmapped(sam_line):
+    singleCount = 0
+    result = []
+    with open("only_unmapped_single_read.sam", "a+") as single_read_unmapped_fasta, open("summary_single_read_unmapped.txt", "w") as summary_file_of_single_read_unmapped:
+        single_read_unmapped_fasta.write(header)
+        for currline in sam_line:
+            line = currline.str()
+            if line.startswith("@"):
+                continue
+            col_line = line.split()
+            flag = flagBinary(col_line[1])
+
+            if (int(flag[2]) == 1) or (int(flag[3]) == 1):         #unmapped or mate unmapped
+                singleCount += 1
+                single_read_unmapped_fasta.write(str(line))
+                result.append(currline)
+        summary_file_of_single_read_unmapped.write("Total unmapped reads where both reads are unmapped: " + str(singleCount)+ "\n")
+    print("The files are saved as only_unmapped_single_read.sam and summary_single_read_unmapped.txt")
+    return result
+
+### Analysing mapped ###
+def mapped(sam_line) -> list[Line]:
+    mapped_count = 0
+    result = []
+    with open("only_mapped.sam", "a+") as mapped_fasta, open("summary_mapped.txt","w") as summary_file_of_mapped_reads: # "a+" is mode for open - append and "w" - write
+        mapped_fasta.write(header)
+        for currline in sam_line:
+            line = currline.str()
+            col_line = line.split()
+            flag = flagBinary(col_line[1])
+
+            if int(flag[1]) == 1:       #only unmapped
+                mapped_count += 1
+                mapped_fasta.write(str(line))
+                result.append(currline)
+        summary_file_of_mapped_reads.write("Total mapped reads: " + str(mapped_count) + "\n" )
+    print("The files are saved as only_mapped.sam and summary_mapped.txt")
+    return result
+
+### Analysing mapped - right orientation ###
+def mappedRightOrientation(sam_line):
+    rightOrientation = 0
+    result = []
+    with open("only_mapped_right_orientation.sam", "a+") as right_orientation_mapped_fasta, open("summary_right_orienatiton_mapped.txt","w") as summary_file_of_right_orientation_mapped_reads: # "a+" is mode for open - append and "w" - write
+        right_orientation_mapped_fasta.write(header)
+        for currline in sam_line:
+            line = currline.str()
+            if line.startswith("@"): # skip header
+                continue
+            col_line = line.split()
+            flag = flagBinary(col_line[1])
+
+            if int(flag[1]) == 1:           #only mapped
+                intFlag = list(map(int, flag)) #map function transforming every parameter in the list(flag) to int
+                if (sum(intFlag) == 4):       #only correct orientation mapped
+                    rightOrientation += 1
+                    right_orientation_mapped_fasta.write(str(line))
+                    result.append(currline)
+        summary_file_of_right_orientation_mapped_reads.write("Total correct orientation mapped reads: " + str(rightOrientation) + "\n")
+    print("The files are saved as only_mapped_right_orientation.sam and summary_right_orientation_mapped.txt")
+    return result
+
+### Analysing mapped - incorrect orientation ###
+def mappedWrongOrientation(sam_line):
+    wrongOrientation = 0
+    result = []
+    with open("only_mapped_wrong_orientation.sam", "a+") as wrong_orientation_mapped_fasta, open("summary_wrong_orienatiton_mapped.txt","w") as summary_file_of_wrong_orientation_mapped_reads: # "a+" is mode for open - append and "w" - write
+        wrong_orientation_mapped_fasta.write(header)
+        for currline in sam_line:
+            line = currline.str()
+            if line.startswith("@"): # skip header
+                continue
+            col_line = line.split()
+            flag = flagBinary(col_line[1])
+
+            if int(flag[1]) == 1:           #only mapped
+                intFlag = list(map(int, flag))
+                if (sum(intFlag) == 3) or (sum(intFlag) == 5):       #only incorrect orientation mapped
+                    wrongOrientation += 1
+                    wrong_orientation_mapped_fasta.write(str(line))
+                    result.append(currline)
+        summary_file_of_wrong_orientation_mapped_reads.write("Total wrong orientation mapped reads: " + str(wrongOrientation) + "\n")
+    print("The files are saved as only_mapped_wrong_orientation.sam and summary_wrong_orientation_mapped.txt")
+    return result
+
+### Check the quality of mapping ###
+def checkQuality(lines : list[Line], mapQuality:int) -> list[Line]:
+    """
+    Given a list of `Line` objects from a SAM file, this function verify the MAPQ observed in the lines.
+    It then verifies if MAPQ is equal or superior to the second parameter from the function,
+    if it is then it adds it to list and returns the list.
+    """
+    mylist : list[Line] = []
+    for line in lines:
+        if int(line.MAPQ) >= mapQuality:
+            mylist.append(line)
+    return mylist
+
+### Analysing the file and getting the distribution of cigars in percentage ###
+def globalPercentCigars(lines):
+    """
+    Given a list of `Line` objects from a SAM file, this function counts the number
+    of each type of cigar mutation observed in the lines. It then calculates
+    the global distribution of these mutations as a percentage and returns
+    the result.
+    """
+
+    # Create a dictionary to store the counts for each type of cigar mutation
+    cigar_counts = {
+        "M": 0,  # alignment match
+        "I": 0,  # insertion
+        "D": 0,  # deletion
+        "S": 0,  # skipped region
+        "H": 0,  # soft clipping
+        "N": 0,  # hard clipping
+        "P": 0,  # padding
+        "X": 0,  # sequence mismatch
+        "=": 0,  # sequence match
+    }
+
+    # Loop through the lines and count the number of each type of cigar mutation
+    for line in lines:
+        # Skip the header lines
+        if line.originalLine.startswith("@"):
+            continue
+
+        # Parse the cigar string from the line
+        cigar_string = line.CIGAR
+
+        # Count the number of each type of cigar mutation in the string
+        for c in cigar_string:
+            if c in cigar_counts:
+                cigar_counts[c] += 1
+
+    # Calculate the total number of cigar mutations
+    total_count = sum(cigar_counts.values())
+
+    # Calculate the global distribution of cigar mutations as a percentage
+    global_distribution = {
+        k: round(100 * v / total_count, 2) for k, v in cigar_counts.items()
+    }
+
+    # Write the global distribution to a file
+    with open("global_distribution_in_percentage.txt", "w") as f:
+        for mutation, percentage in global_distribution.items():
+            f.write(f"{mutation}: {percentage}\n")
+
+    return global_distribution
+
+### Main ###
+def main (argv):
+    with open(argv[1],'r') as newFile:
+        lines : list[Line] = GetListOfLines(newFile.readlines())
+        if isDirectory(argv[1]) == True:
+            boom()
+            sys.exit()
+        elif isExtentionValid(argv[1], "sam") == False:
+            boom()
+            sys.exit()
+        elif isFileValid(lines) == False:
+            sys.exit()
+        totalReads(lines)
+        print("What quality of mapping do you want?" + "\n"+ "Answer with a number in range of 0 - 60 ")
+        while True:
+            quality = int(input())
+            if quality not in range(60):
+                print("Your desired quality is not in the range, please enter new value for quality (between 0 and 60) ")
             else:
-                dico['M'] = i
-                dico['I'] = i
-                dico['D'] = i
-                dico['N'] = i
-                dico['S'] = i
-                dico['H'] = i
-                dico['P'] = i
-                dico['='] = i
-                dico['X'] = i
-                #save the value of the current line in a txt file
-                with open(final_cigar, 'a') as f:
-                    f.write("\t".join(dico.values()))
-                    f.write("\n")
-					
+                break
+        checkQuality(lines, quality)
+        print("Would you like to save a file with the mapped or unmapped reads?" + "\n" + "Answer with: mapped/unmapped")
+        x = input()
+        if x == "mapped" :
+            print("Do you want all mapped reads?" + "\n" + "Answer with : yes/no ")
+            y = input()
+            if y == "yes":
+                result = mapped(checkQuality(lines, quality))
+                print("Would you like the cigar procentage of mapped reads?"+ "\n" + "Answer with : yes/no ")
+                if input() == "yes":
+                    globalPercentCigars(result)
+            elif y == "no":
+                print("Do you want mapped reads with correct orientation or wrong orientation?"+ "\n" + "Answer with : correct/wrong/both " )
+                z = input()
+                if z == "correct":
+                    mappedRightOrientation(checkQuality(lines, quality))
+                elif z == "wrong":
+                    mappedWrongOrientation(checkQuality(lines, quality))
+                elif z == "both":
+                    mappedWrongOrientation(checkQuality(lines, quality))
+                    mappedRightOrientation(checkQuality(lines, quality))
+        elif x == "unmapped":
+            print("Do you want all unmapped reads?"+ "\n" + "Answer with : yes/no ")
+            y = input()
+            if y == "yes":
+                unmapped(checkQuality(lines, quality))
+            elif y == "no":
+                print("Do you want unmapped reads where single read of the pair in unmapped or where the pair is unmapped?" + "\n" + "Answer with : single/pair/both ")
+                z = input()
+                if z == "single":
+                    singleUnmapped(checkQuality(lines, quality))
+                elif z == "pair":
+                    doubleUnmapped(checkQuality(lines, quality))
+                elif z == "both":
+                    singleUnmapped(checkQuality(lines, quality))
+                    doubleUnmapped(checkQuality(lines, quality))
 
-#txted.write("Global cigar mutation observed :"+"\n"+"Alignlent Match : "+round(M/nbReads,2)+"\n"+"Insertion : "+round(I/nbReads,2)+"\n"+"Deletion : "+round(D/nbReads,2)+"\n"+"Skipped region : "+round(S/nbReads,2)+"\n"+"Soft Clipping : "+round(H/nbReads,2)+"\n"+"Hard Clipping : "+round(N/nbReads,2)+"\n"+"Padding : "+round(P/nbReads,2)+"\n"+"Sequence Match : "+round(Egal/nbReads,2)+"\n"+"Sequence Mismatch : "+round(X/nbReads,2)+"\n")
-
-
-
-
-# Compteur :
-
-print("le nombre de read total dans ce fichier est de : ", readtotal)
-
-print("le nombre de paire end bien mappé et bien orienté est de : ", cpt_paireend_30)
-
-print("le nombre de single read bien mappé est de : ",cpt_single_30)
+main(sys.argv)
